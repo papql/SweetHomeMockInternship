@@ -2007,7 +2007,7 @@ public class PlanComponent extends JComponent implements PlanView, Scrollable, P
    * Prints this component plan at the scale given in the home print attributes or at a scale 
    * that makes it fill <code>pageFormat</code> imageable size if this attribute is <code>null</code>.
    */
-  public int print(Graphics g, PageFormat pageFormat, int pageIndex) {
+  private int printSelectedLevel(Graphics g, PageFormat pageFormat, int pageIndex) {
     List<Selectable> printedItems = getPaintedItems(); 
     Rectangle2D printedItemBounds = getItemsBounds(g, printedItems);
     if (printedItemBounds != null) {
@@ -2074,7 +2074,38 @@ public class PlanComponent extends JComponent implements PlanView, Scrollable, P
       return NO_SUCH_PAGE;
     }
   }
-  
+
+  /**
+   * Prints one page for each viewable level of the home, in level order,
+   * or the plan of the home if it doesn't contain any level.
+   * The level selected before printing is always restored.
+   */
+  public int print(Graphics g, PageFormat pageFormat, int pageIndex) {
+    if (pageIndex < 0) {
+      return NO_SUCH_PAGE;
+    }
+    List<Level> viewableLevels = new ArrayList<Level>();
+    for (Level level : this.home.getLevels()) {
+      if (level.isViewable()) {
+        viewableLevels.add(level);
+      }
+    }
+    if (this.home.getLevels().isEmpty()) {
+      return printSelectedLevel(g, pageFormat, pageIndex);
+    } else if (pageIndex >= viewableLevels.size()) {
+      return NO_SUCH_PAGE;
+    }
+
+    Level selectedLevel = this.home.getSelectedLevel();
+    try {
+      // Temporarily select the printed level
+      this.home.setSelectedLevel(viewableLevels.get(pageIndex));
+      return printSelectedLevel(g, pageFormat, 0);
+    } finally {
+      this.home.setSelectedLevel(selectedLevel);
+    }
+  }
+
   /**
    * Returns an image of the selected items displayed by this component 
    * (camera excepted) with no outline at scale 1/1 (1 pixel = 1cm).
